@@ -252,10 +252,13 @@
         const standardLotContractSize = 100;
         const lotSize = cashRisk / (priceDistance * standardLotContractSize);
 
-        // Output formatting
-        document.getElementById('res-cash-risk').innerText = `$${cashRisk.toFixed(2)}`;
-        document.getElementById('res-distance').innerText = `$${priceDistance.toFixed(2)}`;
-        document.getElementById('res-lots').innerText = lotSize.toFixed(2) + " Lots";
+      // Output formatting
+     // Math.floor(value * 100) / 100 drops any third decimal digit to strictly protect capital.
+       const safeLotSize = Math.floor(lotSize * 100) / 100;
+
+   document.getElementById('res-cash-risk').innerText = `$${cashRisk.toFixed(2)}`;
+   document.getElementById('res-distance').innerText = `$${priceDistance.toFixed(2)}`;
+   document.getElementById('res-lots').innerText = safeLotSize.toFixed(2) + " Lots";
 
         // Display results
         resultsBox.style.display = 'block';

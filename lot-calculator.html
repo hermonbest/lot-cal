@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAU/USD Lot Size Calculator</title>
+    <style>
+        :root {
+            --primary: #d4af37;
+            --primary-hover: #aa8c2c;
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text: #ffffff;
+            --text-muted: #a0a0a0;
+            --border: #333333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .calculator-card {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid var(--border);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper span {
+            position: absolute;
+            left: 12px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 12px 12px 30px;
+            background-color: #2a2a2a;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Adjust padding for percentage input where symbol is at the end */
+        .input-wrapper input.pct-input {
+            padding-left: 12px;
+            padding-right: 30px;
+        }
+        .input-wrapper span.pct-span {
+            left: auto;
+            right: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .results {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .result-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-val {
+            font-weight: bold;
+        }
+
+        .highlight {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .error {
+            color: #ff4d4d;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-card">
+    <h2>XAU/USD Position Sizer</h2>
+    
+    <div class="form-group">
+        <label for="balance">Account Balance</label>
+        <div class="input-wrapper">
+            <span>$</span>
+            <input type="number" id="balance" placeholder="10000" step="any" required>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="risk">Risk Wanted (%)</label>
+        <div class="input-wrapper">
+            <input type="number" id="risk" class="pct-input" placeholder="1" step="any" max="100" required>
+            <span class="pct-span">%</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="entry">Entry Price</label>
+        <div class="input-wrapper">
+            <span>$</span>
+            <input type="number" id="entry" placeholder="2350.00" step="any" required>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="stoploss">Stop Loss Price</label>
+        <div class="input-wrapper">
+            <span>$</span>
+            <input type="number" id="stoploss" placeholder="2340.00" step="any" required>
+        </div>
+    </div>
+
+    <button onclick="calculateLotSize()">Calculate Position Size</button>
+
+    <div id="error-msg" class="error"></div>
+
+    <div id="results-box" class="results">
+        <div class="result-row">
+            <span>Amount at Risk:</span>
+            <span id="res-cash-risk" class="result-val"></span>
+        </div>
+        <div class="result-row">
+            <span>Stop Loss Distance:</span>
+            <span id="res-distance" class="result-val"></span>
+        </div>
+        <div class="result-row">
+            <span>Recommended Lot Size:</span>
+            <span id="res-lots" class="result-val highlight"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function calculateLotSize() {
+        // Elements
+        const balance = parseFloat(document.getElementById('balance').value);
+        const riskPercent = parseFloat(document.getElementById('risk').value);
+        const entry = parseFloat(document.getElementById('entry').value);
+        const stoploss = parseFloat(document.getElementById('stoploss').value);
+        
+        const errorMsg = document.getElementById('error-msg');
+        const resultsBox = document.getElementById('results-box');
+
+        // Hide results and errors initially
+        errorMsg.style.display = 'none';
+        resultsBox.style.display = 'none';
+
+        // Validation
+        if (isNaN(balance) || isNaN(riskPercent) || isNaN(entry) || isNaN(stoploss)) {
+            showError("Please fill out all fields with valid numbers.");
+            return;
+        }
+
+        if (balance <= 0 || riskPercent <= 0 || entry <= 0 || stoploss <= 0) {
+            showError("All values must be greater than zero.");
+            return;
+        }
+
+        if (entry === stoploss) {
+            showError("Entry price and Stop Loss cannot be exactly the same.");
+            return;
+        }
+
+        // Calculations
+        // 1. Total cash amount willing to risk
+        const cashRisk = balance * (riskPercent / 100);
+
+        // 2. Distance to stop loss in price/dollars
+        const priceDistance = Math.abs(entry - stoploss);
+
+        // 3. For Gold (XAU), 1 standard lot = 100 ounces. 
+        // Therefore, a $1 moves equals $100 risk per standard lot.
+        const standardLotContractSize = 100;
+        const lotSize = cashRisk / (priceDistance * standardLotContractSize);
+
+        // Output formatting
+        document.getElementById('res-cash-risk').innerText = `$${cashRisk.toFixed(2)}`;
+        document.getElementById('res-distance').innerText = `$${priceDistance.toFixed(2)}`;
+        document.getElementById('res-lots').innerText = lotSize.toFixed(2) + " Lots";
+
+        // Display results
+        resultsBox.style.display = 'block';
+    }
+
+    function showError(message) {
+        const errorMsg = document.getElementById('error-msg');
+        errorMsg.innerText = message;
+        errorMsg.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
